@@ -12,6 +12,7 @@ namespace CartService.MessageBroker
         private IConnection _connection;
         private IModel _channel;
         private string _queueName = "service-queue";
+        //create Dbcontext 
 
         public RabbitMQClient()
         {
@@ -49,6 +50,7 @@ namespace CartService.MessageBroker
 
             string json = JsonConvert.SerializeObject(eventMessage);
 
+
             var body = Encoding.UTF8.GetBytes(json);
 
 
@@ -56,7 +58,7 @@ namespace CartService.MessageBroker
             _channel.BasicPublish(exchange: "", routingKey: _queueName, body: body);
         }
 
-        public void ReceiveMessage()
+        public void ReceiveMessage<T>()
         {
          
             var consumer = new EventingBasicConsumer(_channel);
@@ -64,7 +66,12 @@ namespace CartService.MessageBroker
             {
                 var body = eventArgs.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
-                Console.WriteLine($"Product message received: {message}");
+
+                Message<T> eventMessage = (Message<T>)JsonConvert.DeserializeObject(message);
+
+                //add a cart with a id form payload
+
+                
             };
             //read the message
             _channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
