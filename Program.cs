@@ -1,3 +1,7 @@
+using CartService.Context;
+using CartService.MessageBroker;
+using Microsoft.EntityFrameworkCore;
+
 namespace CartService
 {
     public class Program
@@ -7,6 +11,11 @@ namespace CartService
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+
+            builder.Services.AddDbContext<ServiceContext>(options => options.UseSqlServer(
+                builder.Configuration.GetConnectionString("local-server")));
+
+            builder.Services.AddSingleton<IMessageBrokerClient, RabbitMQClient>();
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

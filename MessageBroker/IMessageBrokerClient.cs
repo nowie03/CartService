@@ -4,6 +4,6 @@
     {
         public void SendMessage<T>(T message, string eventType);
 
-        public void ReceiveMessage<T>();
+        public void ReceiveMessage();
     }
 }

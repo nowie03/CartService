@@ -3,6 +3,8 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using CartService.Models;
+using CartService.Context;
+using CartService.Constants;
 
 namespace CartService.MessageBroker
 {
@@ -12,11 +14,18 @@ namespace CartService.MessageBroker
         private IConnection _connection;
         private IModel _channel;
         private string _queueName = "service-queue";
+
+        private  MessageHandler<User> _messageHandler;
+
         //create Dbcontext 
 
-        public RabbitMQClient()
+        public RabbitMQClient(IServiceProvider serviceProvider)
         {
+           
+         
             SetupClient();
+
+            _messageHandler = new(_channel,serviceProvider);
         }
 
         public void Dispose()
@@ -39,6 +48,8 @@ namespace CartService.MessageBroker
             _channel = _connection.CreateModel();
             //declare the queue after mentioning name and a few property related to that
             _channel.QueueDeclare(_queueName, exclusive: false);
+
+            
         }
         public void SendMessage<T>(T message, string eventType)
         {
@@ -58,23 +69,12 @@ namespace CartService.MessageBroker
             _channel.BasicPublish(exchange: "", routingKey: _queueName, body: body);
         }
 
-        public void ReceiveMessage<T>()
+        public void ReceiveMessage()
         {
          
             var consumer = new EventingBasicConsumer(_channel);
-            consumer.Received += (model, eventArgs) =>
-            {
-                var body = eventArgs.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-
-                Message<T> eventMessage = (Message<T>)JsonConvert.DeserializeObject(message);
-
-                //add a cart with a id form payload
-
-                
-            };
+            consumer.Received += _messageHandler.HandleMessage;
             //read the message
-            _channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
 
         }
     }
