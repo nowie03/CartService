@@ -1,3 +1,4 @@
+using CartService.BackgroundServices;
 using CartService.Context;
 using CartService.MessageBroker;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,10 @@ namespace CartService
                 builder.Configuration.GetConnectionString("local-server")));
 
             builder.Services.AddSingleton<IMessageBrokerClient, RabbitMQClient>();
+
+            builder.Services.AddSingleton<MessageProcessingService>();
+            builder.Services.AddHostedService<MessageProcessingService>(
+                provider=>provider.GetRequiredService<MessageProcessingService>());
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

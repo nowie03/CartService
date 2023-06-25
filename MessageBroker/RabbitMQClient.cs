@@ -23,9 +23,8 @@ namespace CartService.MessageBroker
         {
            
          
-            SetupClient();
+            SetupClient(serviceProvider);
 
-            _messageHandler = new(_channel,serviceProvider);
         }
 
         public void Dispose()
@@ -35,7 +34,7 @@ namespace CartService.MessageBroker
             _connection?.Close();
             _connection?.Dispose();
         }
-        private void SetupClient()
+        private void SetupClient(IServiceProvider serviceProvider)
         {
             //Here we specify the Rabbit MQ Server. we use rabbitmq docker image and use it
             _connectionFactory = new ConnectionFactory
@@ -49,6 +48,7 @@ namespace CartService.MessageBroker
             //declare the queue after mentioning name and a few property related to that
             _channel.QueueDeclare(_queueName, exclusive: false);
 
+            _messageHandler = new(_channel,serviceProvider);
             
         }
         public void SendMessage<T>(T message, string eventType)
@@ -75,6 +75,7 @@ namespace CartService.MessageBroker
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += _messageHandler.HandleMessage;
             //read the message
+            _channel.BasicConsume(queue: _queueName, autoAck: false, consumer: consumer);
 
         }
     }
