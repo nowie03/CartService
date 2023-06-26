@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 using System.Text;
 
 namespace CartService.MessageBroker
@@ -39,21 +40,29 @@ namespace CartService.MessageBroker
             {
                 HostName = "localhost"
             };
-            //Create the RabbitMQ connection using connection factory details as i mentioned above
-            _connection = _connectionFactory.CreateConnection();
-            //Here we create channel with session and model
-            _channel = _connection.CreateModel();
-            //declare the queue after mentioning name and a few property related to that
-            _channel.QueueDeclare(_queueName, exclusive: false);
 
-            _messageHandler = new(_channel, serviceProvider);
+            try
+            {
+                //Create the RabbitMQ connection using connection factory details as i mentioned above
+                _connection = _connectionFactory.CreateConnection();
+                //Here we create channel with session and model
+                _channel = _connection.CreateModel();
+                //declare the queue after mentioning name and a few property related to that
+                _channel.QueueDeclare(_queueName, exclusive: false);
 
+                _messageHandler = new(_channel, serviceProvider);
+            }
+            catch(BrokerUnreachableException ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
         public void SendMessage<T>(T message, string eventType)
         {
 
             //Serialize the message
-
+            if (_channel == null)
+                return;
 
             Message<T> eventMessage = new Message<T>(eventType, message);
 
@@ -69,6 +78,8 @@ namespace CartService.MessageBroker
 
         public void ReceiveMessage()
         {
+            if (_channel == null)
+                return;
 
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += _messageHandler.HandleMessage;
