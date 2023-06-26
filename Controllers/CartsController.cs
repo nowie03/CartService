@@ -80,7 +80,7 @@ namespace CartService.Controllers
         }
         //cart checkout method
         [HttpPost]
-        [Route("api/Carts/checkout")]
+        [Route("checkout")]
         public async Task<ActionResult<bool>> CheckOutCart(int userId)
         {
             //process all orders in cart and make payments for them 
