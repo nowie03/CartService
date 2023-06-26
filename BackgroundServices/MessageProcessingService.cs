@@ -14,21 +14,21 @@ namespace CartService.BackgroundServices
             _configuration = configuration;
             _serviceProvider = serviceProvider;
 
-            _messageBrokerClient=serviceProvider.GetRequiredService<IMessageBrokerClient>();
+            _messageBrokerClient = serviceProvider.GetRequiredService<IMessageBrokerClient>();
         }
-        
-        protected override async  Task ExecuteAsync(CancellationToken stoppingToken)
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 // Perform any additional background processing if needed
-                
-                 _messageBrokerClient.ReceiveMessage();
+
+                _messageBrokerClient.ReceiveMessage();
                 await Task.Delay(1000, stoppingToken); // Delay between iterations to avoid high CPU usage
             }
 
-           
+
         }
     }
 }

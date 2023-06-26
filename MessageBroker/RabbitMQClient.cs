@@ -1,28 +1,26 @@
-﻿using Newtonsoft.Json;
+﻿using CartService.Models;
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
-using CartService.Models;
-using CartService.Context;
-using CartService.Constants;
 
 namespace CartService.MessageBroker
 {
-    public class RabbitMQClient : IMessageBrokerClient , IDisposable
+    public class RabbitMQClient : IMessageBrokerClient, IDisposable
     {
         private ConnectionFactory _connectionFactory;
         private IConnection _connection;
         private IModel _channel;
         private string _queueName = "service-queue";
 
-        private  MessageHandler<User> _messageHandler;
+        private MessageHandler<User> _messageHandler;
 
         //create Dbcontext 
 
         public RabbitMQClient(IServiceProvider serviceProvider)
         {
-           
-         
+
+
             SetupClient(serviceProvider);
 
         }
@@ -48,12 +46,12 @@ namespace CartService.MessageBroker
             //declare the queue after mentioning name and a few property related to that
             _channel.QueueDeclare(_queueName, exclusive: false);
 
-            _messageHandler = new(_channel,serviceProvider);
-            
+            _messageHandler = new(_channel, serviceProvider);
+
         }
         public void SendMessage<T>(T message, string eventType)
         {
-           
+
             //Serialize the message
 
 
@@ -71,7 +69,7 @@ namespace CartService.MessageBroker
 
         public void ReceiveMessage()
         {
-         
+
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += _messageHandler.HandleMessage;
             //read the message

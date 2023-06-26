@@ -20,7 +20,7 @@ namespace CartService
 
             builder.Services.AddSingleton<MessageProcessingService>();
             builder.Services.AddHostedService<MessageProcessingService>(
-                provider=>provider.GetRequiredService<MessageProcessingService>());
+                provider => provider.GetRequiredService<MessageProcessingService>());
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

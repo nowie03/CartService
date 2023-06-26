@@ -1,22 +1,20 @@
 ﻿using CartService.Constants;
 using CartService.Context;
 using CartService.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using System;
 using System.Text;
 
 namespace CartService.MessageBroker
 {
     public class MessageHandler<T> where T : User
     {
-        private  readonly IModel _channel;
-    
+        private readonly IModel _channel;
+
         private readonly IServiceProvider _serviceProvider;
 
-        public MessageHandler(IModel channel ,IServiceProvider serviceProvider)
+        public MessageHandler(IModel channel, IServiceProvider serviceProvider)
         {
             //get servicecontext from injected service container
             _serviceProvider = serviceProvider;

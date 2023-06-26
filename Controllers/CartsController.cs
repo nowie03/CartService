@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using CartService.Context;
+using CartService.MessageBroker;
+using CartService.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CartService.Context;
-using CartService.Models;
-using CartService.MessageBroker;
 
 namespace CartService.Controllers
 {
@@ -18,20 +13,20 @@ namespace CartService.Controllers
         private readonly ServiceContext _context;
         private readonly IMessageBrokerClient _rabbitMQClient;
 
-        public CartsController(ServiceContext context,IServiceProvider serviceProvider)
+        public CartsController(ServiceContext context, IServiceProvider serviceProvider)
         {
             _context = context;
-            _rabbitMQClient=serviceProvider.GetRequiredService<IMessageBrokerClient>();
+            _rabbitMQClient = serviceProvider.GetRequiredService<IMessageBrokerClient>();
         }
 
         // GET: api/Carts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cart>>> GetCart()
         {
-          if (_context.Cart == null)
-          {
-              return NotFound();
-          }
+            if (_context.Cart == null)
+            {
+                return NotFound();
+            }
             return await _context.Cart.AsNoTracking().ToListAsync();
         }
 
@@ -39,10 +34,10 @@ namespace CartService.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Cart>> GetCart(int id)
         {
-          if (_context.Cart == null)
-          {
-              return NotFound();
-          }
+            if (_context.Cart == null)
+            {
+                return NotFound();
+            }
             var cart = await _context.Cart.FindAsync(id);
 
             if (cart == null)
@@ -95,15 +90,15 @@ namespace CartService.Controllers
             try
             {
                 //throws InvalidOperationException when it cannot find any cart items
-                IEnumerable<Cart> userCartItems =  _context.Cart.Where(cart => cart.UserId == userId);
+                IEnumerable<Cart> userCartItems = _context.Cart.Where(cart => cart.UserId == userId);
 
                 if (userCartItems.Count() == 0)
                     throw new InvalidOperationException();
 
                 //for each cart item send a message to queue to initiate payment for them
-                foreach(var cartItem in userCartItems)
+                foreach (var cartItem in userCartItems)
                 {
-                    Message<Cart> message =new(Constants.EventTypes.PAYMENT_INITIATED, cartItem);
+                    Message<Cart> message = new(Constants.EventTypes.PAYMENT_INITIATED, cartItem);
 
                     //send message to queue
                     _rabbitMQClient.SendMessage(message, Constants.EventTypes.PAYMENT_INITIATED);
@@ -113,25 +108,25 @@ namespace CartService.Controllers
                 return Ok(true);
 
             }
-            catch(InvalidOperationException ex)
+            catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return Problem(ex.Message);
             }
-        } 
+        }
         // POST: api/Carts
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<Cart>> PostCart(Cart cart)
         {
-          if (_context.Cart == null)
-          {
-              return Problem("Entity set 'ServiceContext.Cart'  is null.");
-          }
-          
+            if (_context.Cart == null)
+            {
+                return Problem("Entity set 'ServiceContext.Cart'  is null.");
+            }
+
             try
             {
                 _context.Cart.Add(cart);
@@ -139,7 +134,8 @@ namespace CartService.Controllers
 
                 return CreatedAtAction("GetCart", new { id = cart.Id }, cart);
 
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 return Problem(ex.Message);
             }
@@ -165,7 +161,7 @@ namespace CartService.Controllers
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return Problem(ex.Message);
 
