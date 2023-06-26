@@ -53,6 +53,7 @@ namespace CartService.MessageBroker
                     await _serviceContext.Cart.AddAsync(cart);
                     await _serviceContext.SaveChangesAsync();
 
+                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
                 }
                 catch (Exception ex)
                 {
@@ -60,7 +61,6 @@ namespace CartService.MessageBroker
                 }
 
                 //acknowldege queue of successful consume 
-                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
             }
 
 
@@ -77,13 +77,14 @@ namespace CartService.MessageBroker
 
                     _serviceContext.Remove(cart);
 
+                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
+
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"error occured when deleting cart for user id {userDeleted.Id}");
                 }
                 // Acknowledge the message
-                _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
             }
 
         }

@@ -80,7 +80,7 @@ namespace CartService.MessageBroker
         {
             if (_channel == null)
                 return;
-
+            Console.WriteLine("waiting for message");
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += _messageHandler.HandleMessage;
             //read the message
