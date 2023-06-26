@@ -23,7 +23,7 @@ namespace CartService.BackgroundServices
             while (!stoppingToken.IsCancellationRequested)
             {
                 // Perform any additional background processing if needed
-                // ...
+                
                  _messageBrokerClient.ReceiveMessage();
                 await Task.Delay(1000, stoppingToken); // Delay between iterations to avoid high CPU usage
             }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CartService.Context;
 using CartService.Models;
+using CartService.MessageBroker;
 
 namespace CartService.Controllers
 {
@@ -15,10 +16,12 @@ namespace CartService.Controllers
     public class CartsController : ControllerBase
     {
         private readonly ServiceContext _context;
+        private readonly IMessageBrokerClient _rabbitMQClient;
 
-        public CartsController(ServiceContext context)
+        public CartsController(ServiceContext context,IServiceProvider serviceProvider)
         {
             _context = context;
+            _rabbitMQClient=serviceProvider.GetRequiredService<IMessageBrokerClient>();
         }
 
         // GET: api/Carts
@@ -29,7 +32,7 @@ namespace CartService.Controllers
           {
               return NotFound();
           }
-            return await _context.Cart.ToListAsync();
+            return await _context.Cart.AsNoTracking().ToListAsync();
         }
 
         // GET: api/Carts/5
@@ -80,7 +83,45 @@ namespace CartService.Controllers
 
             return NoContent();
         }
+        //cart checkout method
+        [HttpPost]
+        [Route("api/Carts/checkout")]
+        public async Task<ActionResult<bool>> CheckOutCart(int userId)
+        {
+            //process all orders in cart and make payments for them 
+            if (_context.Cart == null)
+                return NoContent();
 
+            try
+            {
+                //throws InvalidOperationException when it cannot find any cart items
+                IEnumerable<Cart> userCartItems =  _context.Cart.Where(cart => cart.UserId == userId);
+
+                if (userCartItems.Count() == 0)
+                    throw new InvalidOperationException();
+
+                //for each cart item send a message to queue to initiate payment for them
+                foreach(var cartItem in userCartItems)
+                {
+                    Message<Cart> message =new(Constants.EventTypes.PAYMENT_INITIATED, cartItem);
+
+                    //send message to queue
+                    _rabbitMQClient.SendMessage(message, Constants.EventTypes.PAYMENT_INITIATED);
+
+                }
+
+                return Ok(true);
+
+            }
+            catch(InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch(Exception ex)
+            {
+                return Problem(ex.Message);
+            }
+        } 
         // POST: api/Carts
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
@@ -90,10 +131,18 @@ namespace CartService.Controllers
           {
               return Problem("Entity set 'ServiceContext.Cart'  is null.");
           }
-            _context.Cart.Add(cart);
-            await _context.SaveChangesAsync();
+          
+            try
+            {
+                _context.Cart.Add(cart);
+                await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetCart", new { id = cart.Id }, cart);
+                return CreatedAtAction("GetCart", new { id = cart.Id }, cart);
+
+            }catch(Exception ex)
+            {
+                return Problem(ex.Message);
+            }
         }
 
         // DELETE: api/Carts/5
@@ -110,10 +159,17 @@ namespace CartService.Controllers
                 return NotFound();
             }
 
-            _context.Cart.Remove(cart);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Cart.Remove(cart);
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch(Exception ex)
+            {
+                return Problem(ex.Message);
 
-            return NoContent();
+            }
         }
 
         private bool CartExists(int id)
