@@ -7,7 +7,11 @@ namespace CartService.Context
     {
         public ServiceContext(DbContextOptions options) : base(options) { }
 
-        public DbSet<Cart> Cart { get; set; }
+        public DbSet<Cart> Carts { get; set; }
+
+        public DbSet<CartItem> CartItems { get; set; }
+
+
 
 
     }

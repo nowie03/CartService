@@ -1,8 +1,13 @@
-﻿using CartService.Context;
-using CartService.MessageBroker;
-using CartService.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using CartService.Context;
+using CartService.Models;
+using CartService.MessageBroker;
 
 namespace CartService.Controllers
 {
@@ -13,32 +18,32 @@ namespace CartService.Controllers
         private readonly ServiceContext _context;
         private readonly IMessageBrokerClient _rabbitMQClient;
 
-        public CartsController(ServiceContext context, IServiceProvider serviceProvider)
+        public CartsController(ServiceContext context,IServiceScopeFactory scopeFactory)
         {
             _context = context;
-            _rabbitMQClient = serviceProvider.GetRequiredService<IMessageBrokerClient>();
+            _rabbitMQClient=scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IMessageBrokerClient>();
         }
 
         // GET: api/Carts
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cart>>> GetCart()
+        public async Task<ActionResult<IEnumerable<Cart>>> GetCarts()
         {
-            if (_context.Cart == null)
-            {
-                return NotFound();
-            }
-            return await _context.Cart.AsNoTracking().ToListAsync();
+          if (_context.Carts == null)
+          {
+              return NotFound();
+          }
+            return await _context.Carts.ToListAsync();
         }
 
         // GET: api/Carts/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Cart>> GetCart(int id)
         {
-            if (_context.Cart == null)
-            {
-                return NotFound();
-            }
-            var cart = await _context.Cart.FindAsync(id);
+          if (_context.Carts == null)
+          {
+              return NotFound();
+          }
+            var cart = await _context.Carts.FindAsync(id);
 
             if (cart == null)
             {
@@ -48,6 +53,30 @@ namespace CartService.Controllers
             return cart;
         }
 
+        [HttpGet]
+        [Route("cartItems")]
+        public async Task<ActionResult<IEnumerable<CartItem>>> GetCartItems(int cartId)
+        {
+            Cart? cart = await _context.Carts.FindAsync(cartId);
+
+            if (cart == null)
+                return NotFound();
+
+            try {
+                IEnumerable<CartItem> cartItems = _context.CartItems.Where(item => item.CartId == cartId);
+
+                if (!cartItems.Any())
+                    return NoContent();
+
+                return Ok(cartItems);
+            }
+            catch (ArgumentNullException ex)
+            {
+                return BadRequest();
+            }
+
+
+        }
         // PUT: api/Carts/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
@@ -78,30 +107,48 @@ namespace CartService.Controllers
 
             return NoContent();
         }
-        //cart checkout method
+
+        // POST: api/Carts
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPost]
+        public async Task<ActionResult<Cart>> PostCart(Cart cart)
+        {
+          if (_context.Carts == null)
+          {
+              return Problem("Entity set 'ServiceContext.Carts'  is null.");
+          }
+            _context.Carts.Add(cart);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetCart", new { id = cart.Id }, cart);
+        }
+
         [HttpPost]
         [Route("checkout")]
-        public async Task<ActionResult<bool>> CheckOutCart(int userId)
+        public async Task<ActionResult<bool>> CheckOutCart(int cartId)
         {
             //process all orders in cart and make payments for them 
-            if (_context.Cart == null)
+            if (_context.Carts == null)
                 return NoContent();
 
             try
             {
-                //throws InvalidOperationException when it cannot find any cart items
-                IEnumerable<Cart> userCartItems = _context.Cart.Where(cart => cart.UserId == userId);
+                Cart? userCart = await _context.Carts.FindAsync(cartId);
 
-                if (userCartItems.Count() == 0)
+                if (userCart == null)
+                    return NotFound();
+
+                //throws InvalidOperationException when it cannot find any cart items
+                IEnumerable<CartItem> userCartItems =  _context.CartItems.Where(item=>item.CartId == cartId);
+
+                if (! userCartItems.Any())
                     throw new InvalidOperationException();
 
                 //for each cart item send a message to queue to initiate payment for them
                 foreach (var cartItem in userCartItems)
                 {
-                    Message<Cart> message = new(Constants.EventTypes.PAYMENT_INITIATED, cartItem);
-
                     //send message to queue
-                    _rabbitMQClient.SendMessage(message, Constants.EventTypes.PAYMENT_INITIATED);
+                    _rabbitMQClient.SendMessage(cartItem, Constants.EventTypes.PAYMENT_INITIATED);
 
                 }
 
@@ -117,27 +164,25 @@ namespace CartService.Controllers
                 return Problem(ex.Message);
             }
         }
-        // POST: api/Carts
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+
         [HttpPost]
-        public async Task<ActionResult<Cart>> PostCart(Cart cart)
+        [Route("cartItems")]
+        public async Task<ActionResult<CartItem>> PostCartItem(CartItem cartItem)
         {
-            if (_context.Cart == null)
-            {
-                return Problem("Entity set 'ServiceContext.Cart'  is null.");
-            }
+            Cart? cart = await _context.Carts.FindAsync(cartItem.CartId);
+
+            if (cart == null)
+                return BadRequest();
 
             try
             {
-                _context.Cart.Add(cart);
+                await _context.CartItems.AddAsync(cartItem);
                 await _context.SaveChangesAsync();
 
-                return CreatedAtAction("GetCart", new { id = cart.Id }, cart);
+                return Ok(cartItem);
 
-            }
-            catch (Exception ex)
-            {
-                return Problem(ex.Message);
+            }catch(Exception ex) {
+                return Problem("unable to add to cart at the moment");
             }
         }
 
@@ -145,32 +190,48 @@ namespace CartService.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCart(int id)
         {
-            if (_context.Cart == null)
+            if (_context.Carts == null)
             {
                 return NotFound();
             }
-            var cart = await _context.Cart.FindAsync(id);
+            var cart = await _context.Carts.FindAsync(id);
             if (cart == null)
             {
                 return NotFound();
             }
 
-            try
-            {
-                _context.Cart.Remove(cart);
-                await _context.SaveChangesAsync();
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return Problem(ex.Message);
+            _context.Carts.Remove(cart);
+            await _context.SaveChangesAsync();
 
+            return NoContent();
+        }
+
+
+        [HttpDelete]
+        [Route("cartItems")]
+        public async Task<ActionResult> DeleteCartItem(int cartItemId)
+        {
+            if (_context.CartItems == null)
+            {
+                return NotFound();
             }
+            CartItem? cartItem = await _context.CartItems.FindAsync(cartItemId);
+
+            if (cartItem == null)
+            {
+                return NotFound();
+            }
+
+            _context.CartItems.Remove(cartItem);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+
         }
 
         private bool CartExists(int id)
         {
-            return (_context.Cart?.Any(e => e.Id == id)).GetValueOrDefault();
+            return (_context.Carts?.Any(e => e.Id == id)).GetValueOrDefault();
         }
     }
 }

@@ -50,7 +50,7 @@ namespace CartService.MessageBroker
                         CreatedAt = DateTime.Now
                     };
 
-                    await _serviceContext.Cart.AddAsync(cart);
+                    await _serviceContext.Carts.AddAsync(cart);
                     await _serviceContext.SaveChangesAsync();
 
                 _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
@@ -72,10 +72,11 @@ namespace CartService.MessageBroker
 
                 try
                 {
-                    Cart? cart = _serviceContext.Cart.Where(cart => cart.UserId == userDeleted.Id).FirstOrDefault() ??
+                    Cart? cart = _serviceContext.Carts.Where(cart => cart.UserId == userDeleted.Id).FirstOrDefault() ??
                         throw new Exception($"cart cannot be found for user id {userDeleted.Id}");
 
-                    _serviceContext.Remove(cart);
+                     _serviceContext.Carts.Remove(cart);
+                    await _serviceContext.SaveChangesAsync();
 
                 _channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
 
