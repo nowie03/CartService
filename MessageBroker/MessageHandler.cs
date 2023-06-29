@@ -34,13 +34,13 @@ namespace CartService.MessageBroker
 
             Console.WriteLine($"message received from queue {message}");
 
-            Message<T>? eventMessage = JsonConvert.DeserializeObject<Message<T>>(message);
+            Message? eventMessage = JsonConvert.DeserializeObject<Message>(message);
 
             // Perform the message handling logic here based on the event message
             if (eventMessage !=null && eventMessage.EventType == EventTypes.USER_CREATED)
             {
                 // Handle the USER_CREATED event
-                User userAdded = eventMessage.Payload;
+                User userAdded = JsonConvert.DeserializeObject<User>(eventMessage.Payload);
 
                 try
                 {
@@ -68,7 +68,7 @@ namespace CartService.MessageBroker
             {
                 // Handle the USER_DELETED event
                 // ...
-                User userDeleted = eventMessage.Payload;
+                User userDeleted = JsonConvert.DeserializeObject<User>(eventMessage.Payload);
 
                 try
                 {

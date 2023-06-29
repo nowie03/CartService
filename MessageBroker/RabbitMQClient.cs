@@ -1,4 +1,7 @@
-﻿using CartService.Models;
+﻿using CartService.Constants;
+using CartService.Context;
+using CartService.Models;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -13,6 +16,7 @@ namespace CartService.MessageBroker
         private IConnection _connection;
         private IModel _channel;
         private string _queueName = "service-queue";
+        private readonly IServiceProvider _serviceProvider;
 
         private MessageHandler<User> _messageHandler;
 
@@ -23,7 +27,7 @@ namespace CartService.MessageBroker
 
 
             SetupClient(serviceProvider);
-
+            _serviceProvider = serviceProvider;
         }
 
         public void Dispose()
@@ -51,22 +55,61 @@ namespace CartService.MessageBroker
                 _channel.QueueDeclare(_queueName, exclusive: false);
 
                 _messageHandler = new(_channel, serviceProvider);
+
+                _channel.ConfirmSelect();
+
+                _channel.BasicAcks += (sender, ea) => HandleMessageAcknowledge(ea.DeliveryTag, ea.Multiple);
             }
             catch(BrokerUnreachableException ex)
             {
                 Console.WriteLine(ex.ToString());
             }
         }
-        public void SendMessage<T>(T message, string eventType)
+
+        private async Task HandleMessageAcknowledge(ulong currentSequenceNumber, bool multiple)
+        {
+            var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
+            if (multiple)
+            {
+                try
+                {
+                    await dbContext.Outbox
+                        .Where(message => message.SequenceNumber <= currentSequenceNumber)
+                        .ExecuteUpdateAsync(
+                        entity => entity.SetProperty(
+                            message => message.State,
+                            Constants.EventStates.EVENT_ACK_COMPLETED
+                            )
+                        );
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            else
+            {
+                Message? messageToBeUpdated = await dbContext.Outbox.FirstOrDefaultAsync(message => message.SequenceNumber == currentSequenceNumber);
+                if (messageToBeUpdated != null)
+                {
+                    messageToBeUpdated.State = EventStates.EVENT_ACK_COMPLETED;
+                }
+
+                await dbContext.SaveChangesAsync();
+            }
+        }
+
+        public void SendMessage(Message message)
         {
 
             //Serialize the message
             if (_channel == null)
                 return;
 
-            Message<T> eventMessage = new Message<T>(eventType, message);
+            
 
-            string json = JsonConvert.SerializeObject(eventMessage);
+            string json = JsonConvert.SerializeObject(message);
 
 
             var body = Encoding.UTF8.GetBytes(json);
@@ -86,6 +129,11 @@ namespace CartService.MessageBroker
             //read the message
             _channel.BasicConsume(queue: _queueName, autoAck: false, consumer: consumer);
 
+        }
+
+        public ulong GetNextSequenceNumber()
+        {
+            return _channel.NextPublishSeqNo;
         }
     }
 }

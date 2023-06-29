@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using CartService.Context;
 using CartService.Models;
 using CartService.MessageBroker;
+using Newtonsoft.Json;
+using System.Transactions;
 
 namespace CartService.Controllers
 {
@@ -131,6 +133,7 @@ namespace CartService.Controllers
             if (_context.Carts == null)
                 return NoContent();
 
+            var transcation =await _context.Database.BeginTransactionAsync();
             try
             {
                 Cart? userCart = await _context.Carts.FindAsync(cartId);
@@ -147,20 +150,31 @@ namespace CartService.Controllers
                 //for each cart item send a message to queue to initiate payment for them
                 foreach (var cartItem in userCartItems)
                 {
-                    //send message to queue
-                    _rabbitMQClient.SendMessage(cartItem, Constants.EventTypes.PAYMENT_INITIATED);
+                    //send message to Outbox
+                    string serializedCartItem = JsonConvert.SerializeObject(cartItem);
+                    ulong nextSequenceNumber = _rabbitMQClient.GetNextSequenceNumber();
+
+                    Message message = new(Constants.EventTypes.PAYMENT_INITIATED, serializedCartItem,
+                        nextSequenceNumber, Constants.EventStates.EVENT_ACK_PENDING);
+
+                    await _context.Outbox.AddAsync(message);
+                    await _context.SaveChangesAsync();
 
                 }
+
+                await transcation.CommitAsync();
 
                 return Ok(true);
 
             }
             catch (InvalidOperationException ex)
             {
+                await transcation.RollbackAsync();
                 return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
+                await transcation.RollbackAsync();
                 return Problem(ex.Message);
             }
         }

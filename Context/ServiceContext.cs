@@ -11,6 +11,8 @@ namespace CartService.Context
 
         public DbSet<CartItem> CartItems { get; set; }
 
+        public DbSet<Message > Outbox { get; set; }
+
 
 
 

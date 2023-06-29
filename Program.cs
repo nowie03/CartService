@@ -22,6 +22,10 @@ namespace CartService
             builder.Services.AddHostedService<MessageProcessingService>(
                 provider => provider.GetRequiredService<MessageProcessingService>());
 
+            builder.Services.AddSingleton<PublishMessageToQueue>();
+            builder.Services.AddHostedService<PublishMessageToQueue>(
+                provider => provider.GetRequiredService<PublishMessageToQueue>());
+
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -30,11 +34,10 @@ namespace CartService
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
+          
                 app.UseSwagger();
                 app.UseSwaggerUI();
-            }
+            
 
             app.UseHttpsRedirection();
 
