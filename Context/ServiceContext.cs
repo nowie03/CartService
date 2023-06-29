@@ -13,6 +13,16 @@ namespace CartService.Context
 
         public DbSet<Message > Outbox { get; set; }
 
+        public DbSet<ConsumedMessage> ConsumedMessages { get; set; }
+
+        override
+        protected void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ConsumedMessage>().HasIndex(message => message.MessageId).IsUnique();
+            modelBuilder.Entity<ConsumedMessage>().HasIndex(message => message.ConsumerId).IsUnique();
+
+        }
+
 
 
 
