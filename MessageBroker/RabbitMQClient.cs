@@ -68,12 +68,13 @@ namespace CartService.MessageBroker
 
         private async Task HandleMessageAcknowledge(ulong currentSequenceNumber, bool multiple)
         {
-            var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
-            if (multiple)
+            try
             {
-                try
+                var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
+                if (multiple)
                 {
+
                     await dbContext.Outbox
                         .Where(message => message.SequenceNumber <= currentSequenceNumber)
                         .ExecuteUpdateAsync(
@@ -82,21 +83,23 @@ namespace CartService.MessageBroker
                             Constants.EventStates.EVENT_ACK_COMPLETED
                             )
                         );
+
+
                 }
-                catch(Exception ex)
+                else
                 {
-                    Console.WriteLine(ex.Message);
+                    Message? messageToBeUpdated = await dbContext.Outbox.FirstOrDefaultAsync(message => message.SequenceNumber == currentSequenceNumber);
+                    if (messageToBeUpdated != null)
+                    {
+                        messageToBeUpdated.State = EventStates.EVENT_ACK_COMPLETED;
+                    }
+
+                    await dbContext.SaveChangesAsync();
                 }
             }
-            else
+            catch(Exception ex)
             {
-                Message? messageToBeUpdated = await dbContext.Outbox.FirstOrDefaultAsync(message => message.SequenceNumber == currentSequenceNumber);
-                if (messageToBeUpdated != null)
-                {
-                    messageToBeUpdated.State = EventStates.EVENT_ACK_COMPLETED;
-                }
-
-                await dbContext.SaveChangesAsync();
+                Console.WriteLine(ex.Message);
             }
         }
 
