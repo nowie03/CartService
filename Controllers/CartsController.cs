@@ -18,12 +18,12 @@ namespace CartService.Controllers
     public class CartsController : ControllerBase
     {
         private readonly ServiceContext _context;
-        private readonly IMessageBrokerClient _rabbitMQClient;
+        private readonly IMessageSender _rabbitMQClient;
 
         public CartsController(ServiceContext context,IServiceScopeFactory scopeFactory)
         {
             _context = context;
-            _rabbitMQClient=scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IMessageBrokerClient>();
+            _rabbitMQClient=scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IMessageSender>();
         }
 
         // GET: api/Carts

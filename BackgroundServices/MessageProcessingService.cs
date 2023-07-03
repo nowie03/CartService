@@ -1,4 +1,5 @@
 ﻿using CartService.MessageBroker;
+using Microsoft.OpenApi.Writers;
 using RabbitMQ.Client.Exceptions;
 using System.Collections.Concurrent;
 
@@ -8,31 +9,37 @@ namespace CartService.BackgroundServices
     {
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ConcurrentDictionary<Guid, IMessageBrokerClient> _messageBrokerClients;
+        private readonly ConcurrentDictionary<Guid, IServiceScope> _cachedScope;
+        private readonly IServiceScopeFactory serviceScopeFactory;
         private Guid _scopeKey;
 
 
-        public MessageProcessingService(IConfiguration configuration, IServiceProvider serviceProvider)
+        public MessageProcessingService(IConfiguration configuration, IServiceProvider serviceProvider,IServiceScopeFactory scopeFactory)
         {
             _configuration = configuration;
             _serviceProvider = serviceProvider;
-            _messageBrokerClients = new ConcurrentDictionary<Guid, IMessageBrokerClient>();
+            serviceScopeFactory = scopeFactory;
+           _cachedScope = new ConcurrentDictionary<Guid, IServiceScope>();
             _scopeKey = Guid.NewGuid();
 
 
         }
 
-        private IMessageBrokerClient GetScopedMessageBrokerClient(IServiceProvider serviceProvider)
+        private IServiceScope GetCachedScope(IServiceScopeFactory scopeFactory)
         {
-            if (!_messageBrokerClients.TryGetValue(_scopeKey, out var messageBrokerClient))
+            if (!_cachedScope.TryGetValue(_scopeKey, out var scope))
             {
-                // Create and cache the scoped message broker client
-                messageBrokerClient = serviceProvider.GetRequiredService<IMessageBrokerClient>();
-                _messageBrokerClients.TryAdd(_scopeKey, messageBrokerClient);
+                // Create and cache the scope
+                var newScope = scopeFactory.CreateScope();
+                _cachedScope.TryAdd(_scopeKey, newScope);
+
+                return newScope;
             }
 
-            return messageBrokerClient;
+            return scope;
         }
+
+        
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -43,15 +50,18 @@ namespace CartService.BackgroundServices
                 // Perform any additional background processing if needed
                 try
                 {
-                    var scope = _serviceProvider.CreateScope();
-
-                    var messageBrokerClient = GetScopedMessageBrokerClient(scope.ServiceProvider);
-                    messageBrokerClient.ReceiveMessage();
-
+                    //check if there is a valid scope
+                    var scope = GetCachedScope(serviceScopeFactory);
+                    var messageReceiver = scope.ServiceProvider.GetRequiredService<IMessageReceiver>();
+                    messageReceiver.ReceiveMessage();
+                  
+                    
 
                 }
                 catch (AlreadyClosedException ex)
                 {
+                   
+                    _scopeKey=Guid.NewGuid();
                     Console.WriteLine("unable to connect to queue");
 
 
@@ -60,6 +70,11 @@ namespace CartService.BackgroundServices
                 {
                     Console.WriteLine(ex.ToString());
                 }
+                    
+               
+
+                
+                
                 await Task.Delay(1000, stoppingToken); // Delay between iterations to avoid high CPU usage
             }
 

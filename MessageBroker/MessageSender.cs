@@ -2,6 +2,7 @@
 using CartService.Context;
 using CartService.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -10,7 +11,7 @@ using System.Text;
 
 namespace CartService.MessageBroker
 {
-    public class RabbitMQClient : IMessageBrokerClient, IDisposable
+    public class MessageSender : IMessageSender, IDisposable
     {
         private ConnectionFactory _connectionFactory;
         private IConnection _connection;
@@ -18,11 +19,10 @@ namespace CartService.MessageBroker
         private string _queueName = "service-queue";
         private readonly IServiceProvider _serviceProvider;
 
-        private MessageHandler<User> _messageHandler;
-
+        
         //create Dbcontext 
 
-        public RabbitMQClient(IServiceProvider serviceProvider)
+        public MessageSender(IServiceProvider serviceProvider)
         {
 
 
@@ -32,6 +32,7 @@ namespace CartService.MessageBroker
 
         public void Dispose()
         {
+            Console.WriteLine("Disposed current client");   
             _channel?.Close();
             _channel?.Dispose();
             _connection?.Close();
@@ -47,14 +48,15 @@ namespace CartService.MessageBroker
 
             try
             {
+                
                 //Create the RabbitMQ connection using connection factory details as i mentioned above
                 _connection = _connectionFactory.CreateConnection();
                 //Here we create channel with session and model
                 _channel = _connection.CreateModel();
                 //declare the queue after mentioning name and a few property related to that
-                _channel.QueueDeclare(_queueName, exclusive: false);
+                //_channel.QueueDeclare(_queueName, exclusive: false);
 
-                _messageHandler = new(_channel, serviceProvider);
+               
 
                 _channel.ConfirmSelect();
 
@@ -117,23 +119,15 @@ namespace CartService.MessageBroker
 
             var body = Encoding.UTF8.GetBytes(json);
 
-
+           
             //put the data on to the product queue
             _channel.BasicPublish(exchange: "", routingKey: _queueName, body: body);
         }
 
-        public void ReceiveMessage()
-        {
-            if (_channel == null)
-                return;
-            Console.WriteLine("waiting for message");
-            var consumer = new EventingBasicConsumer(_channel);
-            consumer.Received += _messageHandler.HandleMessage;
-            //read the message
-            _channel.BasicConsume(queue: _queueName, autoAck: false, consumer: consumer);
 
-        }
+      
 
+       
         public ulong GetNextSequenceNumber()
         {
             return _channel.NextPublishSeqNo;

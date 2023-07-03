@@ -19,7 +19,7 @@ namespace CartService.Context
         protected void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ConsumedMessage>().HasIndex(message => message.MessageId).IsUnique();
-            modelBuilder.Entity<ConsumedMessage>().HasIndex(message => message.ConsumerId).IsUnique();
+
 
         }
 

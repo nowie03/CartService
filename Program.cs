@@ -16,7 +16,8 @@ namespace CartService
             builder.Services.AddDbContext<ServiceContext>(options => options.UseSqlServer(
                 builder.Configuration.GetConnectionString("local-server")));
 
-            builder.Services.AddScoped<IMessageBrokerClient, RabbitMQClient>();
+            builder.Services.AddScoped<IMessageSender, MessageSender>();
+            builder.Services.AddScoped<IMessageReceiver,MessageReceiver>();
 
             builder.Services.AddSingleton<MessageProcessingService>();
             builder.Services.AddHostedService<MessageProcessingService>(

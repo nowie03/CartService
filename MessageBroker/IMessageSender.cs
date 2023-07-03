@@ -2,11 +2,11 @@
 
 namespace CartService.MessageBroker
 {
-    public interface IMessageBrokerClient
+    public interface IMessageSender
     {
         public void SendMessage(Message message);
 
-        public void ReceiveMessage();
+       
 
         public ulong GetNextSequenceNumber();
         

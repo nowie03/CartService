@@ -12,23 +12,23 @@ namespace CartService.BackgroundServices
     {
         private readonly IServiceProvider _serviceProvider;
    
-        private readonly ConcurrentDictionary<Guid, IMessageBrokerClient> _rabbitMQConnections;
-        private readonly Guid _scopeKey= Guid.NewGuid();
+        private readonly ConcurrentDictionary<Guid, IMessageSender> _rabbitMQConnections;
+        private  Guid _scopeKey= Guid.NewGuid();
 
 
         public PublishMessageToQueue(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
           
-            _rabbitMQConnections = new ConcurrentDictionary<Guid, IMessageBrokerClient>();
+            _rabbitMQConnections = new ConcurrentDictionary<Guid, IMessageSender>();
         }
 
-        private IMessageBrokerClient GetScopedMessageBrokerClient(IServiceProvider serviceProvider)
+        private IMessageSender GetScopedMessageBrokerClient(IServiceProvider serviceProvider)
         {
             if (!_rabbitMQConnections.TryGetValue(_scopeKey, out var messageBrokerClient))
             {
                 // Create and cache the scoped message broker client
-                messageBrokerClient = serviceProvider.GetRequiredService<IMessageBrokerClient>();
+                messageBrokerClient = serviceProvider.GetRequiredService<IMessageSender>();
                 _rabbitMQConnections.TryAdd(_scopeKey, messageBrokerClient);
             }
 
@@ -73,6 +73,12 @@ namespace CartService.BackgroundServices
                 catch (Exception ex)
                 {
                     Console.WriteLine($"error when publishing messages to queue {ex.Message}");
+                }
+
+                finally
+                {
+                    scope.Dispose();
+                    _scopeKey=Guid.NewGuid();
                 }
 
               
