@@ -132,9 +132,15 @@ namespace CartService.MessageBroker
 
                 ConsumedMessage consumedMessage = new ConsumedMessage(eventMessage.Id, consumerId);
 
-                await _serviceContext.ConsumedMessages.AddAsync(consumedMessage);
-                await _serviceContext.SaveChangesAsync();
-
+                try
+                {
+                    await _serviceContext.ConsumedMessages.AddAsync(consumedMessage);
+                    await _serviceContext.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
             // Perform the message handling logic here based on the event message
             if (eventMessage != null && eventMessage.EventType == EventTypes.USER_CREATED)
