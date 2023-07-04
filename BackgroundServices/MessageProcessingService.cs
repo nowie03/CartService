@@ -1,5 +1,4 @@
 ﻿using CartService.MessageBroker;
-using Microsoft.OpenApi.Writers;
 using RabbitMQ.Client.Exceptions;
 using System.Collections.Concurrent;
 
@@ -14,12 +13,12 @@ namespace CartService.BackgroundServices
         private Guid _scopeKey;
 
 
-        public MessageProcessingService(IConfiguration configuration, IServiceProvider serviceProvider,IServiceScopeFactory scopeFactory)
+        public MessageProcessingService(IConfiguration configuration, IServiceProvider serviceProvider, IServiceScopeFactory scopeFactory)
         {
             _configuration = configuration;
             _serviceProvider = serviceProvider;
             serviceScopeFactory = scopeFactory;
-           _cachedScope = new ConcurrentDictionary<Guid, IServiceScope>();
+            _cachedScope = new ConcurrentDictionary<Guid, IServiceScope>();
             _scopeKey = Guid.NewGuid();
 
 
@@ -39,7 +38,7 @@ namespace CartService.BackgroundServices
             return scope;
         }
 
-        
+
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -54,14 +53,14 @@ namespace CartService.BackgroundServices
                     var scope = GetCachedScope(serviceScopeFactory);
                     var messageReceiver = scope.ServiceProvider.GetRequiredService<IMessageReceiver>();
                     messageReceiver.ReceiveMessage();
-                  
-                    
+
+
 
                 }
                 catch (AlreadyClosedException ex)
                 {
-                   
-                    _scopeKey=Guid.NewGuid();
+
+                    _scopeKey = Guid.NewGuid();
                     Console.WriteLine("unable to connect to queue");
 
 
@@ -70,11 +69,11 @@ namespace CartService.BackgroundServices
                 {
                     Console.WriteLine(ex.ToString());
                 }
-                    
-               
 
-                
-                
+
+
+
+
                 await Task.Delay(1000, stoppingToken); // Delay between iterations to avoid high CPU usage
             }
 

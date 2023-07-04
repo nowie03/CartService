@@ -11,12 +11,12 @@ using System.Text;
 
 namespace CartService.MessageBroker
 {
-    public class MessageReceiver : IMessageReceiver,IDisposable
+    public class MessageReceiver : IMessageReceiver, IDisposable
     {
-        private  IConnectionFactory _connectionFactory;
-        private  IModel _channel;
+        private IConnectionFactory _connectionFactory;
+        private IModel _channel;
         private IServiceProvider _serviceProvider;
-        private readonly string _queueName="service-queue";
+        private readonly string _queueName = "service-queue";
         private EventingBasicConsumer _consumer;
         public MessageReceiver(IServiceProvider serviceProvider)
         {
@@ -39,7 +39,7 @@ namespace CartService.MessageBroker
 
                 _channel.ConfirmSelect();
 
-                _channel.BasicAcks += async (sender, ea) =>await HandleMessageAcknowledge(ea.DeliveryTag, ea.Multiple);
+                _channel.BasicAcks += async (sender, ea) => await HandleMessageAcknowledge(ea.DeliveryTag, ea.Multiple);
             }
             catch (BrokerUnreachableException ex)
             {
@@ -90,16 +90,16 @@ namespace CartService.MessageBroker
             if (_channel == null)
                 return;
             Console.WriteLine("waiting for message");
-            
-           
+
+
 
             _consumer.Received += async (model, eventArgs) => await HandleMessageReceived(eventArgs);
 
 
             //read the message
             _channel.BasicConsume(queue: _queueName, autoAck: false, consumer: _consumer);
-            
-          
+
+
 
 
         }
@@ -107,9 +107,9 @@ namespace CartService.MessageBroker
         private async Task HandleMessageReceived(BasicDeliverEventArgs eventArgs)
         {
 
-            
+
             using var handlerScope = _serviceProvider.CreateScope();
-            var _serviceContext =handlerScope.ServiceProvider.GetRequiredService<ServiceContext>();
+            var _serviceContext = handlerScope.ServiceProvider.GetRequiredService<ServiceContext>();
 
             var body = eventArgs.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);

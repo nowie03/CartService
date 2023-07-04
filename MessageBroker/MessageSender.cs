@@ -2,10 +2,8 @@
 using CartService.Context;
 using CartService.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Text;
 
@@ -19,7 +17,7 @@ namespace CartService.MessageBroker
         private string _queueName = "service-queue";
         private readonly IServiceProvider _serviceProvider;
 
-        
+
         //create Dbcontext 
 
         public MessageSender(IServiceProvider serviceProvider)
@@ -32,7 +30,7 @@ namespace CartService.MessageBroker
 
         public void Dispose()
         {
-            Console.WriteLine("Disposed current client");   
+            Console.WriteLine("Disposed current client");
             _channel?.Close();
             _channel?.Dispose();
             _connection?.Close();
@@ -48,7 +46,7 @@ namespace CartService.MessageBroker
 
             try
             {
-                
+
                 //Create the RabbitMQ connection using connection factory details as i mentioned above
                 _connection = _connectionFactory.CreateConnection();
                 //Here we create channel with session and model
@@ -56,13 +54,13 @@ namespace CartService.MessageBroker
                 //declare the queue after mentioning name and a few property related to that
                 //_channel.QueueDeclare(_queueName, exclusive: false);
 
-               
+
 
                 _channel.ConfirmSelect();
 
                 _channel.BasicAcks += (sender, ea) => HandleMessageAcknowledge(ea.DeliveryTag, ea.Multiple);
             }
-            catch(BrokerUnreachableException ex)
+            catch (BrokerUnreachableException ex)
             {
                 Console.WriteLine(ex.ToString());
             }
@@ -99,7 +97,7 @@ namespace CartService.MessageBroker
                     await dbContext.SaveChangesAsync();
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
@@ -112,22 +110,22 @@ namespace CartService.MessageBroker
             if (_channel == null)
                 return;
 
-            
+
 
             string json = JsonConvert.SerializeObject(message);
 
 
             var body = Encoding.UTF8.GetBytes(json);
 
-           
+
             //put the data on to the product queue
             _channel.BasicPublish(exchange: "", routingKey: _queueName, body: body);
         }
 
 
-      
 
-       
+
+
         public ulong GetNextSequenceNumber()
         {
             return _channel.NextPublishSeqNo;

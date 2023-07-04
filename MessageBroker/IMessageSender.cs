@@ -6,9 +6,9 @@ namespace CartService.MessageBroker
     {
         public void SendMessage(Message message);
 
-       
+
 
         public ulong GetNextSequenceNumber();
-        
+
     }
 }

@@ -5,7 +5,7 @@ namespace CartService.Models
     public class Message
     {
         [Key]
-        public int  Id { get; set; }
+        public int Id { get; set; }
 
         [Required]
         public string EventType { get; set; }

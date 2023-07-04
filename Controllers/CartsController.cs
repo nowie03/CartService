@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using CartService.Context;
+using CartService.MessageBroker;
+using CartService.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CartService.Context;
-using CartService.Models;
-using CartService.MessageBroker;
 using Newtonsoft.Json;
-using System.Transactions;
 
 namespace CartService.Controllers
 {
@@ -20,20 +14,20 @@ namespace CartService.Controllers
         private readonly ServiceContext _context;
         private readonly IMessageSender _rabbitMQClient;
 
-        public CartsController(ServiceContext context,IServiceScopeFactory scopeFactory)
+        public CartsController(ServiceContext context, IServiceScopeFactory scopeFactory)
         {
             _context = context;
-            _rabbitMQClient=scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IMessageSender>();
+            _rabbitMQClient = scopeFactory.CreateScope().ServiceProvider.GetRequiredService<IMessageSender>();
         }
 
         // GET: api/Carts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Cart>>> GetCarts()
         {
-          if (_context.Carts == null)
-          {
-              return NotFound();
-          }
+            if (_context.Carts == null)
+            {
+                return NotFound();
+            }
             return await _context.Carts.ToListAsync();
         }
 
@@ -41,10 +35,10 @@ namespace CartService.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Cart>> GetCart(int id)
         {
-          if (_context.Carts == null)
-          {
-              return NotFound();
-          }
+            if (_context.Carts == null)
+            {
+                return NotFound();
+            }
             var cart = await _context.Carts.FindAsync(id);
 
             if (cart == null)
@@ -64,7 +58,8 @@ namespace CartService.Controllers
             if (cart == null)
                 return NotFound();
 
-            try {
+            try
+            {
                 IEnumerable<CartItem> cartItems = _context.CartItems.Where(item => item.CartId == cartId);
 
                 if (!cartItems.Any())
@@ -115,10 +110,10 @@ namespace CartService.Controllers
         [HttpPost]
         public async Task<ActionResult<Cart>> PostCart(Cart cart)
         {
-          if (_context.Carts == null)
-          {
-              return Problem("Entity set 'ServiceContext.Carts'  is null.");
-          }
+            if (_context.Carts == null)
+            {
+                return Problem("Entity set 'ServiceContext.Carts'  is null.");
+            }
             _context.Carts.Add(cart);
             await _context.SaveChangesAsync();
 
@@ -133,7 +128,7 @@ namespace CartService.Controllers
             if (_context.Carts == null)
                 return NoContent();
 
-            var transcation =await _context.Database.BeginTransactionAsync();
+            var transcation = await _context.Database.BeginTransactionAsync();
             try
             {
                 Cart? userCart = await _context.Carts.FindAsync(cartId);
@@ -142,9 +137,9 @@ namespace CartService.Controllers
                     return NotFound();
 
                 //throws InvalidOperationException when it cannot find any cart items
-                IEnumerable<CartItem> userCartItems =  _context.CartItems.Where(item=>item.CartId == cartId);
+                IEnumerable<CartItem> userCartItems = _context.CartItems.Where(item => item.CartId == cartId);
 
-                if (! userCartItems.Any())
+                if (!userCartItems.Any())
                     throw new InvalidOperationException();
 
                 //for each cart item send a message to queue to initiate payment for them
@@ -195,7 +190,9 @@ namespace CartService.Controllers
 
                 return Ok(cartItem);
 
-            }catch(Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 return Problem("unable to add to cart at the moment");
             }
         }

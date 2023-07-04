@@ -17,7 +17,7 @@ namespace CartService
                 builder.Configuration.GetConnectionString("local-server")));
 
             builder.Services.AddScoped<IMessageSender, MessageSender>();
-            builder.Services.AddScoped<IMessageReceiver,MessageReceiver>();
+            builder.Services.AddScoped<IMessageReceiver, MessageReceiver>();
 
             builder.Services.AddSingleton<MessageProcessingService>();
             builder.Services.AddHostedService<MessageProcessingService>(
@@ -35,10 +35,10 @@ namespace CartService
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-          
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            
+
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
 
             app.UseHttpsRedirection();
 

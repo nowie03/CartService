@@ -15,9 +15,10 @@ namespace CartService.Models
 
         public DateTime CreatedAt { get; set; }
 
-        public ConsumedMessage(int messageId,string consumerId) {
-            MessageId= messageId;
-            ConsumerId= consumerId;
+        public ConsumedMessage(int messageId, string consumerId)
+        {
+            MessageId = messageId;
+            ConsumerId = consumerId;
         }
     }
 }

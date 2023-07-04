@@ -1,25 +1,23 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Collections.Concurrent;
-using CartService.Constants;
-
+﻿using CartService.Context;
 using CartService.MessageBroker;
 using CartService.Models;
-using CartService.Context;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace CartService.BackgroundServices
 {
     public class PublishMessageToQueue : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
-   
+
         private readonly ConcurrentDictionary<Guid, IMessageSender> _rabbitMQConnections;
-        private  Guid _scopeKey= Guid.NewGuid();
+        private Guid _scopeKey = Guid.NewGuid();
 
 
         public PublishMessageToQueue(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
-          
+
             _rabbitMQConnections = new ConcurrentDictionary<Guid, IMessageSender>();
         }
 
@@ -35,7 +33,7 @@ namespace CartService.BackgroundServices
             return messageBrokerClient;
         }
 
-    
+
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -44,32 +42,32 @@ namespace CartService.BackgroundServices
                 var scope = _serviceProvider.CreateScope();
                 try
                 {
-                    
 
-                        //cache the services so that they dont get created everytime
-                        var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
 
-                        var messageBrokerClient = GetScopedMessageBrokerClient(scope.ServiceProvider);
+                    //cache the services so that they dont get created everytime
+                    var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
 
-                        //get pending ack messages and publish it to queue
-                        IEnumerable<Message> pendingMessages = await dbContext.Outbox.Where(message => message.State == Constants.EventStates.EVENT_ACK_PENDING)
-                            .ToListAsync();
+                    var messageBrokerClient = GetScopedMessageBrokerClient(scope.ServiceProvider);
 
-                  
+                    //get pending ack messages and publish it to queue
+                    IEnumerable<Message> pendingMessages = await dbContext.Outbox.Where(message => message.State == Constants.EventStates.EVENT_ACK_PENDING)
+                        .ToListAsync();
 
-                        foreach (var pendingMessage in pendingMessages)
-                        {
-                           
-                            messageBrokerClient.SendMessage(pendingMessage);
-                            
-                        }
 
-                        
 
+                    foreach (var pendingMessage in pendingMessages)
+                    {
+
+                        messageBrokerClient.SendMessage(pendingMessage);
 
                     }
 
-                
+
+
+
+                }
+
+
                 catch (Exception ex)
                 {
                     Console.WriteLine($"error when publishing messages to queue {ex.Message}");
@@ -78,13 +76,13 @@ namespace CartService.BackgroundServices
                 finally
                 {
                     scope.Dispose();
-                    _scopeKey=Guid.NewGuid();
+                    _scopeKey = Guid.NewGuid();
                 }
 
-              
+
                 await Task.Delay(5000, stoppingToken);
 
-            }  
+            }
         }
     }
 }
