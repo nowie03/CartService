@@ -9,6 +9,7 @@ namespace CartService.BackgroundServices
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
         private readonly ConcurrentDictionary<Guid, IServiceScope> _cachedScope;
+        private readonly IMessageReceiver _receiver;
         private readonly IServiceScopeFactory serviceScopeFactory;
         private Guid _scopeKey;
 
@@ -18,6 +19,7 @@ namespace CartService.BackgroundServices
             _configuration = configuration;
             _serviceProvider = serviceProvider;
             serviceScopeFactory = scopeFactory;
+            
             _cachedScope = new ConcurrentDictionary<Guid, IServiceScope>();
             _scopeKey = Guid.NewGuid();
 
@@ -29,10 +31,10 @@ namespace CartService.BackgroundServices
             if (!_cachedScope.TryGetValue(_scopeKey, out var scope))
             {
                 // Create and cache the scope
-                var newScope = scopeFactory.CreateScope();
-                _cachedScope.TryAdd(_scopeKey, newScope);
+                scope = scopeFactory.CreateScope();
+                _cachedScope.TryAdd(_scopeKey, scope);
 
-                return newScope;
+                return scope;
             }
 
             return scope;
@@ -51,9 +53,12 @@ namespace CartService.BackgroundServices
                 {
                     //check if there is a valid scope
                     var scope = GetCachedScope(serviceScopeFactory);
+                    
                     var messageReceiver = scope.ServiceProvider.GetRequiredService<IMessageReceiver>();
                     messageReceiver.ReceiveMessage();
 
+                   
+                    
 
 
                 }

@@ -18,8 +18,10 @@ namespace CartService.MessageBroker
         private IServiceProvider _serviceProvider;
         private readonly string _queueName = "service-queue";
         private EventingBasicConsumer _consumer;
+        public static int instance=0;
         public MessageReceiver(IServiceProvider serviceProvider)
         {
+            Console.WriteLine($"created message receiver instance {instance}");
             _serviceProvider = serviceProvider;
             _connectionFactory = new ConnectionFactory
             {
@@ -110,7 +112,7 @@ namespace CartService.MessageBroker
 
             using var handlerScope = _serviceProvider.CreateScope();
             var _serviceContext = handlerScope.ServiceProvider.GetRequiredService<ServiceContext>();
-
+            
             var body = eventArgs.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
 
@@ -119,7 +121,10 @@ namespace CartService.MessageBroker
             //check if this message is already consumed if no process it
             Message? eventMessage = JsonConvert.DeserializeObject<Message>(message);
 
-            if (eventMessage != null)
+            
+
+            if (eventMessage != null
+                && (eventMessage.EventType == EventTypes.USER_CREATED || eventMessage.EventType == EventTypes.USER_DELETED))
             {
 
                 string consumerId = "cart-service";
@@ -194,11 +199,13 @@ namespace CartService.MessageBroker
                 // Acknowledge the message
             }
             Console.WriteLine("scope disposed for handle message receiver");
+
+           
         }
 
         public void Dispose()
         {
-            Console.WriteLine("Disposed mesage receiver");
+            Console.WriteLine($"Disposed mesage receiver {instance}");
             _channel.Dispose();
         }
     }
