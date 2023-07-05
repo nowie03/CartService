@@ -25,7 +25,7 @@ namespace CartService.MessageBroker
             _serviceProvider = serviceProvider;
             _connectionFactory = new ConnectionFactory
             {
-                HostName = "localhost"
+                HostName = "message-queue"
             };
 
             try
