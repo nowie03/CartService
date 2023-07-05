@@ -22,7 +22,7 @@ namespace CartService.Controllers
 
         // GET: api/Carts
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Cart>>> GetCarts()
+        public async Task<ActionResult<IEnumerable<Cart>>> GetCart()
         {
             if (_context.Carts == null)
             {
@@ -30,6 +30,8 @@ namespace CartService.Controllers
             }
             return await _context.Carts.ToListAsync();
         }
+
+      
 
         // GET: api/Carts/5
         [HttpGet("{id}")]
@@ -39,7 +41,7 @@ namespace CartService.Controllers
             {
                 return NotFound();
             }
-            var cart = await _context.Carts.FindAsync(id);
+            var cart = await _context.Carts.Where(cart=>cart.UserId==id).AsNoTracking().FirstAsync();
 
             if (cart == null)
             {
