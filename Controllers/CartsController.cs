@@ -130,9 +130,7 @@ namespace CartService.Controllers
             if (_context.Carts == null)
                 return NoContent();
 
-            var transcation = await _context.Database.BeginTransactionAsync();
-            try
-            {
+           
                 Cart? userCart = await _context.Carts.FindAsync(cartId);
 
                 if (userCart == null)
@@ -145,6 +143,7 @@ namespace CartService.Controllers
                     throw new InvalidOperationException();
 
                 //for each cart item send a message to queue to initiate payment for them
+                List<Message>messagesToAddToOutbox=new List<Message>();
                 foreach (var cartItem in userCartItems)
                 {
                     //send message to Outbox
@@ -154,11 +153,16 @@ namespace CartService.Controllers
                     Message message = new(Constants.EventTypes.PAYMENT_INITIATED, serializedCartItem,
                         nextSequenceNumber, Constants.EventStates.EVENT_ACK_PENDING);
 
-                    await _context.Outbox.AddAsync(message);
-                    await _context.SaveChangesAsync();
+                    messagesToAddToOutbox.Add(message);
+
 
                 }
+            var transcation = await _context.Database.BeginTransactionAsync();
+            try
+            {
 
+                await _context.Outbox.AddRangeAsync(messagesToAddToOutbox);
+                await _context.SaveChangesAsync();
                 await transcation.CommitAsync();
 
                 return Ok(true);
