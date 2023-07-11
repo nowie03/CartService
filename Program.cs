@@ -34,6 +34,14 @@ namespace CartService
 
             var app = builder.Build();
 
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ServiceContext>();
+                dbContext.Database.Migrate();
+
+                // use context
+            }
+
             // Configure the HTTP request pipeline.
 
             app.UseSwagger();
